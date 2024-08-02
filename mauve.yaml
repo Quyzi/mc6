@@ -1,0 +1,19 @@
+rocket:
+  address: 127.0.0.1
+  port: 9000
+  limits:
+    form: "64kiB"
+    json: "100Mib"
+  tls:
+    certs: cert.pem
+    key: key.pem
+  secret_key: meowmeow-meow-meow-meow-meowmeowmeow
+
+sled:
+  cache_capacity: 1073741824 #1Gib
+  flush_every_ms: 500
+  path: data
+  mode: HighThroughput
+  use_compression: false
+  compression_factor: 5
+  idgen_persist_interval: 1000000

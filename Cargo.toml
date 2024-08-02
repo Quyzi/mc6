@@ -1,0 +1,20 @@
+[package]
+name = "mc6"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+anyhow = "1.0"
+bytes = "1.6"
+dashmap = "6.0"
+figment = { version = "0.10", features = ["yaml"] }
+log = { version = "0.4", features = ["kv", "kv_serde", "serde"] }
+rocket = { version = "0.5", features = ["json", "tls", "uuid"] }
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+simplelog = { version = "0.12", features = ["paris"] }
+sled = "0.34"
+thiserror = "1.0"
+tokio = { version = "1.39", features = ["full"] }
+utoipa = { version = "4.2", features = ["rocket_extras"] }
+utoipa-scalar = { version = "0.1", features = ["rocket"] }
