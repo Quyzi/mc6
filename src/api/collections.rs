@@ -6,7 +6,7 @@ use utoipa as openapi;
     tag = "collections",
     context_path = "/v1/collections",
     responses(
-        (status = 200, description = "List collections successful", body = Json<Vec<String>>),
+        (status = 200, description = "List collections successful", body = Vec<String>),
         (status = 500, description = "Server error"),
     )
 )]
@@ -28,7 +28,7 @@ pub fn list_collections(backend: &State<Backend>) -> Result<Json<Vec<String>>, M
         ("prefix" = String, Query, description = "Object prefix to query")
     ),
     responses(
-        (status = 200, description = "List objects successful", body = Json<Vec<String>>),
+        (status = 200, description = "List objects successful", body = Vec<String>),
         (status = 500, description = "Server error"),
     )
 )]

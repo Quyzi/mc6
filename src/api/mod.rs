@@ -30,7 +30,7 @@ pub struct ApiDoc;
     tag = "Backend",
     context_path = "/v1",
     responses(
-        (status = 200, description = "Backend status success", body = Json<BackendState>),
+        (status = 200, description = "Backend status success", body = BackendState),
         (status = 500, description = "Server error")
     )
 )]

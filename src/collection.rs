@@ -32,7 +32,7 @@ impl Collection {
                     Ok(s) => Some(s),
                     Err(e) => {
                         log::error!(err = e.to_string(); "collection key failed to deserialize to string");
-                        None 
+                        None
                     }
                 }
             }))

@@ -13,6 +13,7 @@ use errors::MauveError;
 use simplelog::{CombinedLogger, TermLogger};
 use utoipa::OpenApi;
 use utoipa_scalar::{Scalar, Servable as ScalarServable};
+use utoipa_swagger_ui::SwaggerUi;
 
 #[tokio::main]
 pub async fn main() -> Result<(), MauveError> {
@@ -37,6 +38,10 @@ pub async fn main() -> Result<(), MauveError> {
         .manage(config)
         .manage(backend)
         .mount("/", Scalar::with_url("/scalar", ApiDoc::openapi()))
+        .mount(
+            "/",
+            SwaggerUi::new("/swagger-ui/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
+        )
         .mount("/v1", routes![api::backend_status,])
         .mount(
             "/v1/objects/",

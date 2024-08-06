@@ -18,3 +18,4 @@ thiserror = "1.0"
 tokio = { version = "1.39", features = ["full"] }
 utoipa = { version = "4.2", features = ["rocket_extras"] }
 utoipa-scalar = { version = "0.1", features = ["rocket"] }
+utoipa-swagger-ui = { version = "7.1.0", features = ["rocket"] }

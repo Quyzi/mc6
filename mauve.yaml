@@ -2,8 +2,13 @@ rocket:
   address: 127.0.0.1
   port: 9000
   limits:
-    form: "64kiB"
-    json: "100Mib"
+    bytes: 10MiB
+    data-form: 10MiB
+    file: 10MiB
+    form: 10MiB
+    json: 10MiB
+    msgpack: 10MiB
+    string: 10MiB
   tls:
     certs: cert.pem
     key: key.pem
