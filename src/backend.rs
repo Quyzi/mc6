@@ -1,6 +1,6 @@
 use serde::Serialize;
 
-use crate::{collection::Collection, config::Config, errors::MauveError};
+use crate::{collection::Collection, config::AppConfig, errors::MauveError};
 
 #[derive(Clone)]
 pub struct Backend {
@@ -9,7 +9,7 @@ pub struct Backend {
 
 impl Backend {
     /// Open the backend from a config
-    pub fn open(config: Config) -> Result<Self, MauveError> {
+    pub fn open(config: AppConfig) -> Result<Self, MauveError> {
         let config: sled::Config = config.sled.into();
         let db = config.open()?;
         Ok(Self { db })

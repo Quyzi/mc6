@@ -1,4 +1,4 @@
-use crate::{errors::MauveServeError, storage::Backend};
+use crate::{backend::Backend, errors::MauveServeError};
 use rocket::{serde::json::Json, State};
 use utoipa as openapi;
 

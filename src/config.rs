@@ -9,16 +9,30 @@ use serde::{Deserialize, Serialize};
 use crate::errors::MauveError;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
-pub struct Config {
+pub struct AppConfig {
     pub rocket: rocket::Config,
     pub sled: SledConfig,
+    pub mauve: MauveConfig,
 }
 
-impl Config {
+impl AppConfig {
     pub fn load(file: PathBuf) -> Result<Self, MauveError> {
         Ok(Figment::from(Serialized::defaults(Self::default()))
             .merge(Yaml::file(file))
             .extract()?)
+    }
+}
+
+#[derive(Serialize, Deserialize, Clone, Debug)]
+pub struct MauveConfig {
+    pub object_max_size_mb: u64,
+}
+
+impl Default for MauveConfig {
+    fn default() -> Self {
+        Self {
+            object_max_size_mb: 30,
+        }
     }
 }
 

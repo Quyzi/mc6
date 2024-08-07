@@ -1,8 +1,8 @@
 pub mod api;
+pub mod backend;
 pub mod collection;
 pub mod config;
 pub mod errors;
-pub mod storage;
 
 #[macro_use]
 extern crate rocket;
@@ -30,8 +30,8 @@ pub async fn main() -> Result<(), MauveError> {
 
     log::info!("Mauve starting");
 
-    let config = config::Config::load(PathBuf::from_str("mauve.yaml").unwrap())?;
-    let backend = storage::Backend::open(config.clone())?;
+    let config = config::AppConfig::load(PathBuf::from_str("mauve.yaml").unwrap())?;
+    let backend = backend::Backend::open(config.clone())?;
 
     rocket::build()
         .configure(&config.rocket)

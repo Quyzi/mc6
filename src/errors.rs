@@ -19,6 +19,9 @@ pub enum MauveError {
     #[error("Sled error {0}")]
     SledError(#[from] sled::Error),
 
+    #[error("IO error {0}")]
+    IoError(String),
+
     #[error("{0}")]
     CollectionError(CollectionError),
 
@@ -29,6 +32,12 @@ pub enum MauveError {
 impl From<rocket::Error> for MauveError {
     fn from(value: rocket::Error) -> Self {
         Self::RocketError(value.pretty_print().to_string())
+    }
+}
+
+impl From<std::io::Error> for MauveError {
+    fn from(value: std::io::Error) -> Self {
+        MauveError::IoError(value.to_string())
     }
 }
 
@@ -44,6 +53,7 @@ impl Into<MauveServeError> for MauveError {
             },
             MauveError::Oops(msg) => (Status::ImATeapot, msg),
             MauveError::Utf8Error(err) => (Status::InternalServerError, err.to_string()),
+            MauveError::IoError(msg) => (Status::InternalServerError, msg),
         }
     }
 }

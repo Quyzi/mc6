@@ -1,8 +1,13 @@
 use crate::{
+    backend::Backend,
+    config::AppConfig,
     errors::{MauveError, MauveServeError},
-    storage::Backend,
 };
-use rocket::{http::Status, State};
+use rocket::{
+    data::ToByteUnit,
+    http::{ContentType, Status},
+    Data, State,
+};
 use utoipa as openapi;
 
 /// Check if an object exists in a collection.
@@ -46,15 +51,23 @@ pub fn head_object(
         (status = 500, description = "Server error"),
     )
 )]
-#[get("/<collection>/<name>")]
+#[get("/<collection>/<name>?<want>")]
 pub fn get_object(
     collection: &str,
     name: &str,
     backend: &State<Backend>,
-) -> Result<Vec<u8>, MauveServeError> {
+    want: Option<String>,
+) -> Result<(ContentType, Vec<u8>), MauveServeError> {
     let collection = backend.get_collection(collection).map_err(|e| e.into())?;
     let object = collection.get_object(name).map_err(|e| e.into())?;
-    Ok(object)
+    let want = match want {
+        Some(ct) => match ContentType::parse_flexible(&ct) {
+            Some(t) => t,
+            None => ContentType::Binary,
+        },
+        None => ContentType::Binary,
+    };
+    Ok((want, object))
 }
 
 #[openapi::path(
@@ -74,13 +87,21 @@ pub fn get_object(
 /// Post an object into a collection. If the object already exists, this will return an error.
 /// To replace the object, use PUT instead.
 #[post("/<collection>/<name>", data = "<payload>")]
-pub fn post_object(
+pub async fn post_object(
     collection: &str,
     name: &str,
-    payload: Vec<u8>,
+    payload: Data<'_>,
     backend: &State<Backend>,
+    config: &State<AppConfig>,
 ) -> Result<String, MauveServeError> {
     let collection = backend.get_collection(collection).map_err(|e| e.into())?;
+    let payload = payload
+        .open(config.mauve.object_max_size_mb.mebibytes())
+        .into_bytes()
+        .await
+        .map_err(|e| (Status::InternalServerError, e.to_string()))?
+        .to_vec();
+
     let result = collection
         .put_object(name, payload, false)
         .map_err(|e| e.into())?;
@@ -102,13 +123,21 @@ pub fn post_object(
 )]
 /// Put an object into a collection. If the object already exists, the old will be overwritten.
 #[put("/<collection>/<name>", data = "<payload>")]
-pub fn put_object(
+pub async fn put_object(
     collection: &str,
     name: &str,
-    payload: Vec<u8>,
+    payload: Data<'_>,
     backend: &State<Backend>,
+    config: &State<AppConfig>,
 ) -> Result<String, MauveServeError> {
     let collection = backend.get_collection(collection).map_err(|e| e.into())?;
+    let payload = payload
+        .open(config.mauve.object_max_size_mb.mebibytes())
+        .into_bytes()
+        .await
+        .map_err(|e| (Status::InternalServerError, e.to_string()))?
+        .to_vec();
+
     let result = collection
         .put_object(name, payload, true)
         .map_err(|e| e.into())?;

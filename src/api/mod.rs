@@ -5,8 +5,8 @@ use rocket::{serde::json::Json, State};
 use utoipa::OpenApi;
 
 use crate::{
+    backend::{Backend, BackendState},
     errors::MauveServeError,
-    storage::{Backend, BackendState},
 };
 
 #[derive(OpenApi)]
