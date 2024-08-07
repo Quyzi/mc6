@@ -1,4 +1,5 @@
 use serde::Serialize;
+use utoipa::ToSchema;
 
 use crate::{collection::Collection, config::AppConfig, errors::MauveError};
 
@@ -52,11 +53,11 @@ impl Backend {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub struct TreeState {
     pub checksum: u32,
     pub name: String,
-    pub len: usize,
+    pub len: u32,
 }
 
 impl TryInto<TreeState> for sled::Tree {
@@ -64,7 +65,7 @@ impl TryInto<TreeState> for sled::Tree {
 
     fn try_into(self) -> Result<TreeState, Self::Error> {
         let checksum = self.checksum()?;
-        let len = self.len();
+        let len = self.len() as u32;
         let name = String::from_utf8(self.name().to_vec())?;
         Ok(TreeState {
             checksum,
@@ -74,7 +75,7 @@ impl TryInto<TreeState> for sled::Tree {
     }
 }
 
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, ToSchema)]
 pub struct BackendState {
     pub checksum: u32,
     pub name: String,

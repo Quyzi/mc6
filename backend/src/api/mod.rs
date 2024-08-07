@@ -5,7 +5,7 @@ use rocket::{serde::json::Json, State};
 use utoipa::OpenApi;
 
 use crate::{
-    backend::{Backend, BackendState},
+    backend::{Backend, BackendState, TreeState},
     errors::MauveServeError,
 };
 
@@ -22,7 +22,8 @@ use crate::{
         collections::list_objects,
         collections::delete_collection,
         backend_status,
-    )
+    ),
+    components(schemas(BackendState, TreeState),)
 )]
 pub struct ApiDoc;
 
