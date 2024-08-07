@@ -1,0 +1,14 @@
+[package]
+name = "cmd"
+version = "0.1.0"
+edition = "2021"
+
+[[bin]]
+name = "mauved"
+path = "mauved/main.rs"
+
+[dependencies]
+simplelog = { workspace = true }
+tokio = { workspace = true }
+mc6_backend = { path = "../backend" }
+log = { workspace = true }
