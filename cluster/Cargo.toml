@@ -1,0 +1,14 @@
+[package]
+name = "cluster"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+bytes = { workspace = true, features = ["serde"] }
+dashmap = { workspace = true }
+log = { workspace = true }
+openraft = { workspace = true }
+serde = { workspace = true }
+serde_json = { workspace = true }
+sled = { workspace = true }
+tokio = { workspace = true }
