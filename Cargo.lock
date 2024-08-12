@@ -332,6 +332,7 @@ dependencies = [
  "bytes",
  "dashmap",
  "log",
+ "mc6_backend",
  "openraft",
  "serde",
  "serde_json",

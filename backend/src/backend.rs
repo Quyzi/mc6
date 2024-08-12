@@ -1,4 +1,6 @@
-use serde::Serialize;
+use std::fmt::Debug;
+
+use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
 use crate::{collection::Collection, config::AppConfig, errors::MauveError};
@@ -6,6 +8,12 @@ use crate::{collection::Collection, config::AppConfig, errors::MauveError};
 #[derive(Clone)]
 pub struct Backend {
     db: sled::Db,
+}
+
+impl Debug for Backend {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.debug_struct("Backend").field("checksum", &self.db.checksum().unwrap_or(0)).finish()
+    }
 }
 
 impl Backend {
@@ -39,6 +47,17 @@ impl Backend {
             }
         }
         Ok(collections)
+    }
+
+    pub fn export(&self) -> Vec<(Vec<u8>, Vec<u8>, Vec<Vec<Vec<u8>>>)> {
+        let bytes = self.db.export().into_iter().map(|(a, b, c)| {
+            (a, b, c.into_iter().collect::<Vec<Vec<Vec<u8>>>>())
+        }).collect();
+        bytes
+    }
+
+    pub fn import(&self, export: Vec<(Vec<u8>, Vec<u8>, impl Iterator<Item = Vec<Vec<u8>>>)>)  {
+        self.db.import(export)
     }
 
     /// Delete a named collection. This cannot be undone.
@@ -104,4 +123,9 @@ impl TryInto<BackendState> for Backend {
             recovered,
         })
     }
+}
+
+#[derive(Clone, Serialize, Deserialize)]
+pub struct MauveExport {
+    pub data: Vec<(Vec<u8>, Vec<u8>, Vec<Vec<Vec<u8>>>)>,
 }

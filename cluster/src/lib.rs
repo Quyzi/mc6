@@ -25,9 +25,16 @@ pub enum Request {
 
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub enum Response {
-    DeleteCollection {},
-    PutObject {},
-    DeleteObject {},
+    Empty {},
+    DeleteCollection {
+        path: String,
+    },
+    PutObject {
+        path: String,
+    },
+    DeleteObject {
+        path: String,
+    },
 }
 
 #[derive(Clone, Copy, Debug, Default, PartialOrd, Ord, PartialEq, Eq, Serialize, Deserialize)]
