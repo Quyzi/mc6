@@ -25,6 +25,9 @@ pub enum MauveError {
     #[error("{0}")]
     CollectionError(CollectionError),
 
+    #[error("bincode failed {0}")]
+    BincodeError(String),
+
     #[error("Oopsie {0}")]
     Oops(String),
 }
@@ -41,6 +44,12 @@ impl From<std::io::Error> for MauveError {
     }
 }
 
+impl From<Box<bincode::ErrorKind>> for MauveError {
+    fn from(value: Box<bincode::ErrorKind>) -> Self {
+        MauveError::BincodeError(value.to_string())
+    }
+}
+
 impl Into<MauveServeError> for MauveError {
     fn into(self) -> MauveServeError {
         match self {
@@ -54,6 +63,7 @@ impl Into<MauveServeError> for MauveError {
             MauveError::Oops(msg) => (Status::ImATeapot, msg),
             MauveError::Utf8Error(err) => (Status::InternalServerError, err.to_string()),
             MauveError::IoError(msg) => (Status::InternalServerError, msg),
+            MauveError::BincodeError(msg) => (Status::InternalServerError, msg),
         }
     }
 }

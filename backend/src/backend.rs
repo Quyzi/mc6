@@ -18,9 +18,9 @@ impl Backend {
 
     /// Get a Collection by name
     pub fn get_collection(&self, name: &str) -> Result<Collection, MauveError> {
-        let name = format!("mauve::{name}");
-        let tree = self.db.open_tree(name)?;
-        Ok(tree.into())
+        let data = self.db.open_tree(format!("mauve::{name}"))?;
+        let meta = self.db.open_tree(format!("mauve::meta::{name}"))?;
+        Ok(Collection { data, meta })
     }
 
     /// Get a list of all the collections stored on this Backend

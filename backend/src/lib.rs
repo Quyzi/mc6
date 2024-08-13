@@ -13,6 +13,7 @@ pub mod backend;
 pub mod collection;
 pub mod config;
 pub mod errors;
+pub mod meta;
 
 pub fn mauve_rocket(config: AppConfig, backend: Backend) -> Rocket<Build> {
     let rocket = rocket::build()

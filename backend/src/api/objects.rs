@@ -2,10 +2,11 @@ use crate::{
     backend::Backend,
     config::AppConfig,
     errors::{MauveError, MauveServeError},
+    meta::{Metadata, ObjectWithMetadata},
 };
 use rocket::{
     data::ToByteUnit,
-    http::{ContentType, Status},
+    http::Status,
     Data, State,
 };
 use utoipa as openapi;
@@ -51,23 +52,16 @@ pub fn head_object(
         (status = 500, description = "Server error"),
     )
 )]
-#[get("/<collection>/<name>?<want>")]
+#[get("/<collection>/<name>")]
 pub fn get_object(
     collection: &str,
     name: &str,
     backend: &State<Backend>,
-    want: Option<String>,
-) -> Result<(ContentType, Vec<u8>), MauveServeError> {
+) -> Result<ObjectWithMetadata, MauveServeError> {
     let collection = backend.get_collection(collection).map_err(|e| e.into())?;
     let object = collection.get_object(name).map_err(|e| e.into())?;
-    let want = match want {
-        Some(ct) => match ContentType::parse_flexible(&ct) {
-            Some(t) => t,
-            None => ContentType::Binary,
-        },
-        None => ContentType::Binary,
-    };
-    Ok((want, object))
+    let meta = collection.get_object_metadata(name).map_err(|e| e.into())?;
+    Ok(ObjectWithMetadata { object, meta })
 }
 
 #[openapi::path(
@@ -91,6 +85,7 @@ pub async fn post_object(
     collection: &str,
     name: &str,
     payload: Data<'_>,
+    meta: Metadata,
     backend: &State<Backend>,
     config: &State<AppConfig>,
 ) -> Result<String, MauveServeError> {
@@ -105,6 +100,11 @@ pub async fn post_object(
     let result = collection
         .put_object(name, payload, false)
         .map_err(|e| e.into())?;
+
+    let _ = collection
+        .put_object_metadata(name, meta)
+        .map_err(|e| e.into())?;
+
     Ok(result)
 }
 
@@ -127,6 +127,7 @@ pub async fn put_object(
     collection: &str,
     name: &str,
     payload: Data<'_>,
+    meta: Metadata,
     backend: &State<Backend>,
     config: &State<AppConfig>,
 ) -> Result<String, MauveServeError> {
@@ -141,6 +142,11 @@ pub async fn put_object(
     let result = collection
         .put_object(name, payload, true)
         .map_err(|e| e.into())?;
+
+    let _ = collection
+        .put_object_metadata(name, meta)
+        .map_err(|e| e.into())?;
+
     Ok(result)
 }
 
