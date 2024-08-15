@@ -1,7 +1,10 @@
 use std::fmt::{Debug, Display};
 
 use rocket::http::Status;
+use sled::transaction::ConflictableTransactionError;
 use thiserror::Error;
+
+use crate::indexer::IndexerSignal;
 
 pub type MauveServeError = (Status, String);
 
@@ -19,8 +22,17 @@ pub enum MauveError {
     #[error("Sled error {0}")]
     SledError(#[from] sled::Error),
 
+    #[error("Sled tx error {0}")]
+    SledTxError(#[from] sled::transaction::TransactionError),
+
     #[error("IO error {0}")]
     IoError(String),
+
+    #[error("Signaling error {0}")]
+    SignalError(#[from] flume::SendError<IndexerSignal>),
+
+    #[error("Invalid label string {0}")]
+    InvalidLabel(String),
 
     #[error("{0}")]
     CollectionError(CollectionError),
@@ -56,6 +68,7 @@ impl Into<MauveServeError> for MauveError {
             MauveError::ConfigError(err) => (Status::InternalServerError, err.to_string()),
             MauveError::RocketError(msg) => (Status::InternalServerError, msg),
             MauveError::SledError(err) => (Status::InternalServerError, err.to_string()),
+            MauveError::SledTxError(err) => (Status::InternalServerError, err.to_string()),
             MauveError::CollectionError(err) => match err {
                 CollectionError::PutObjectExistsNoReplace => (Status::Conflict, format!("{err}")),
                 CollectionError::ObjectNotFound => (Status::NotFound, format!("{err}")),
@@ -64,7 +77,18 @@ impl Into<MauveServeError> for MauveError {
             MauveError::Utf8Error(err) => (Status::InternalServerError, err.to_string()),
             MauveError::IoError(msg) => (Status::InternalServerError, msg),
             MauveError::BincodeError(msg) => (Status::InternalServerError, msg),
+            MauveError::SignalError(err) => (Status::InternalServerError, err.to_string()),
+            MauveError::InvalidLabel(l) => (
+                Status::InternalServerError,
+                format!("Invalid label string {l}"),
+            ),
         }
+    }
+}
+
+impl Into<ConflictableTransactionError> for MauveError {
+    fn into(self) -> ConflictableTransactionError {
+        ConflictableTransactionError::Abort(sled::Error::ReportableBug(self.to_string()))
     }
 }
 

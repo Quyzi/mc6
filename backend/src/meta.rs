@@ -1,4 +1,4 @@
-use std::{collections::HashMap, io::Cursor};
+use std::{collections::HashSet, io::Cursor};
 
 use rocket::{
     http::{Header, Status},
@@ -8,16 +8,29 @@ use rocket::{
     Request, Response,
 };
 use serde::{Deserialize, Serialize};
+use utoipa::ToSchema;
 
-use crate::errors::MauveError;
+use crate::{errors::MauveError, labels::Label};
 
-#[derive(Serialize, Deserialize, Clone, Debug, Default)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, ToSchema)]
 pub struct Metadata {
     pub(crate) content_type: String,
     pub(crate) content_encoding: String,
     pub(crate) content_language: String,
     pub(crate) size: u64,
-    pub(crate) labels: HashMap<String, String>,
+    pub(crate) labels: HashSet<Label>,
+    pub(crate) offset_map: String,
+}
+
+impl Metadata {
+    pub fn label_str(&self) -> String {
+        let mut s = String::new();
+        for label in &self.labels {
+            s.push_str(&label.to_fwd());
+            s.push(',');
+        }
+        s.trim_end_matches(',').to_string()
+    }
 }
 
 #[rocket::async_trait]
@@ -67,6 +80,9 @@ impl<'a> TryFrom<&rocket::Request<'a>> for Metadata {
                     };
                     this.size = size;
                 }
+                "X-MAUVE-OFFSETS-INCLUSIVE" => {
+                    this.offset_map = header.value().to_string();
+                }
                 "X-MAUVE-LABELS" => {
                     let labels = header.value();
                     for label in labels.split(',') {
@@ -74,7 +90,7 @@ impl<'a> TryFrom<&rocket::Request<'a>> for Metadata {
                             Some((k, v)) => (k, v),
                             None => continue,
                         };
-                        this.labels.insert(name.to_string(), value.to_string());
+                        this.labels.insert(Label::new(name, value));
                     }
                 }
                 _ => continue,
@@ -93,8 +109,8 @@ impl<'r> Responder<'r, 'static> for ObjectWithMetadata {
     fn respond_to(self, _req: &'r Request<'_>) -> rocket::response::Result<'static> {
         log::debug!("{meta:?}", meta = self.meta);
         let mut labels = String::new();
-        for (k, v) in self.meta.labels {
-            labels.push_str(&format!("{k}={v},"));
+        for label in self.meta.labels {
+            labels.push_str(&label.to_fwd());
         }
         labels = labels.trim_end_matches(',').to_string();
 
@@ -103,6 +119,10 @@ impl<'r> Responder<'r, 'static> for ObjectWithMetadata {
             .header(Header::new("Content-Encoding", self.meta.content_encoding))
             .header(Header::new("Content-Language", self.meta.content_language))
             .header(Header::new("x-mauve-labels", labels))
+            .header(Header::new(
+                "x-mauve-offsets-inclusive",
+                self.meta.offset_map,
+            ))
             .sized_body(self.object.len(), Cursor::new(self.object))
             .ok()
     }

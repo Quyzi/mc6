@@ -1,15 +1,37 @@
+use std::str::FromStr;
+
 use crate::{
     errors::{CollectionError::ObjectNotFound, MauveError},
+    labels::Label,
     meta::Metadata,
 };
 
 #[derive(Clone)]
 pub struct Collection {
+    pub name: String,
     pub(crate) data: sled::Tree,
     pub(crate) meta: sled::Tree,
+    pub(crate) index_fwd: sled::Tree,
+    pub(crate) index_rev: sled::Tree,
 }
 
 impl Collection {
+    pub(crate) fn data_tree(&self) -> sled::Tree {
+        self.data.clone()
+    }
+
+    pub(crate) fn meta_tree(&self) -> sled::Tree {
+        self.meta.clone()
+    }
+
+    pub(crate) fn index_fwd(&self) -> sled::Tree {
+        self.index_fwd.clone()
+    }
+
+    pub(crate) fn index_rev(&self) -> sled::Tree {
+        self.index_rev.clone()
+    }
+
     /// Get a list of object keys being stored in the collection matching a given prefix.
     /// This iterates over every object stored. This can be very expensive and time consuming
     /// if there are a huge number of objects stored. Use with caution
@@ -133,5 +155,16 @@ impl Collection {
             }
             None => Ok(None),
         }
+    }
+
+    /// List all labels known to this collection.
+    pub fn list_labels(&self) -> Result<impl IntoIterator<Item = Label>, MauveError> {
+        let mut labels = vec![];
+        for label in self.index_fwd.into_iter() {
+            let (label, _) = label?;
+            let label = String::from_utf8(label.to_vec())?;
+            labels.push(Label::from_str(&label)?);
+        }
+        Ok(labels)
     }
 }

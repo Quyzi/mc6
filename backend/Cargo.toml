@@ -13,6 +13,7 @@ bincode = { workspace = true }
 bytes = { workspace = true }
 dashmap = { workspace = true }
 figment = { workspace = true }
+flume = { workspace = true }
 log = { workspace = true }
 rocket = { workspace = true }
 serde = { workspace = true }

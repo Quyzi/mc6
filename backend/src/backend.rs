@@ -1,11 +1,18 @@
+use flume::{Receiver, Sender};
 use serde::Serialize;
 use utoipa::ToSchema;
 
-use crate::{collection::Collection, config::AppConfig, errors::MauveError};
+use crate::{
+    collection::Collection,
+    config::AppConfig,
+    errors::MauveError,
+    indexer::{Indexer, IndexerSignal},
+};
 
 #[derive(Clone)]
 pub struct Backend {
     db: sled::Db,
+    signals: (Sender<IndexerSignal>, Receiver<IndexerSignal>),
 }
 
 impl Backend {
@@ -13,14 +20,43 @@ impl Backend {
     pub fn open(config: AppConfig) -> Result<Self, MauveError> {
         let config: sled::Config = config.sled.into();
         let db = config.open()?;
-        Ok(Self { db })
+        let signals = flume::unbounded();
+
+        let this = Self {
+            db,
+            signals: signals.clone(),
+        };
+
+        let that = this.clone();
+        tokio::task::spawn(async move {
+            let indexer = Indexer::initialize(that)?;
+            match indexer.run(signals).await {
+                Ok(_) => Ok(()),
+                Err(e) => {
+                    log::error!("Indexer exited with error {e}");
+                    Err(e)
+                }
+            }
+        });
+
+        Ok(this)
     }
 
     /// Get a Collection by name
     pub fn get_collection(&self, name: &str) -> Result<Collection, MauveError> {
-        let data = self.db.open_tree(format!("mauve::{name}"))?;
-        let meta = self.db.open_tree(format!("mauve::meta::{name}"))?;
-        Ok(Collection { data, meta })
+        let data = self.db.open_tree(format!("mauve_data::{name}"))?;
+        let meta = self.db.open_tree(format!("mauve_meta::{name}"))?;
+        let index_fwd = self.db.open_tree(format!("mauve_fwd::{name}"))?;
+        let index_rev = self.db.open_tree(format!("mauve_rev::{name}"))?;
+        let this = Collection {
+            name: name.to_string(),
+            data,
+            meta,
+            index_fwd,
+            index_rev,
+        };
+        self.send_signal(IndexerSignal::Watch(this.clone()))?;
+        Ok(this)
     }
 
     /// Get a list of all the collections stored on this Backend
@@ -34,8 +70,8 @@ impl Backend {
                     continue;
                 }
             };
-            if s.starts_with("mauve::") {
-                collections.push(s.strip_prefix("mauve::").unwrap().to_string());
+            if s.starts_with("mauve_meta::") {
+                collections.push(s.strip_prefix("mauve_meta::").unwrap().to_string());
             }
         }
         Ok(collections)
@@ -43,13 +79,29 @@ impl Backend {
 
     /// Delete a named collection. This cannot be undone.
     pub fn delete_collection(&self, name: &str) -> Result<String, MauveError> {
-        self.db.drop_tree(format!("mauve::{name}"))?;
+        self.send_signal(IndexerSignal::Unwatch(self.get_collection(name)?))?;
+        self.db.drop_tree(format!("mauve_data::{name}"))?;
+        self.db.drop_tree(format!("mauve_meta::{name}"))?;
+        self.db.drop_tree(format!("mauve_fwd::{name}"))?;
+        self.db.drop_tree(format!("mauve_rev::{name}"))?;
         Ok(name.to_string())
     }
 
     /// Get backend status
     pub fn status(&self) -> Result<BackendState, MauveError> {
         Ok(self.clone().try_into()?)
+    }
+
+    /// Get a ref to the backend sled Db
+    #[allow(dead_code)]
+    pub(crate) fn get_db(&self) -> &sled::Db {
+        &self.db
+    }
+
+    /// Send a signal to the indexer
+    pub(crate) fn send_signal(&self, s: IndexerSignal) -> Result<(), MauveError> {
+        self.signals.0.send(s)?;
+        Ok(())
     }
 }
 
