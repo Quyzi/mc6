@@ -21,6 +21,7 @@ pub mod indexer;
 pub mod labels;
 pub mod meta;
 pub mod objects;
+pub mod search;
 
 pub fn mauve_rocket(config: AppConfig, backend: Backend) -> Rocket<Build> {
     let rocket = rocket::build()
@@ -33,6 +34,7 @@ pub fn mauve_rocket(config: AppConfig, backend: Backend) -> Rocket<Build> {
             SwaggerUi::new("/api/v1/<_..>").url("/api-docs/openapi.json", ApiDoc::openapi()),
         )
         .mount("/v1", routes![api::backend_status,])
+        .mount("/v1/search", routes![api::search::search_collection])
         .mount(
             "/v1/objects/",
             routes! {
