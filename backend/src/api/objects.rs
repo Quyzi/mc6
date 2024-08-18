@@ -1,15 +1,20 @@
+use std::io::Cursor;
+
 use crate::{
     backend::Backend,
+    collection::Collection,
     config::AppConfig,
     errors::{MauveError, MauveServeError},
     meta::{Metadata, ObjectWithMetadata},
 };
 use rocket::{
     data::ToByteUnit,
-    http::Status,
-    Data, State,
+    http::{Header, Status},
+    response::Responder,
+    Data, Request, Response, State,
 };
-use utoipa as openapi;
+use serde::{Deserialize, Serialize};
+use utoipa::{self as openapi, ToSchema};
 
 /// Check if an object exists in a collection.
 #[openapi::path(
@@ -70,6 +75,10 @@ pub fn get_object(
     params(
         ("collection" = String, description = "Name of the collection"),
         ("name" = String, description = "Name of the object"),
+        ("content-type" = String, Header, description = "Content Type"),
+        ("content-encoding" = String, Header, description = "Content Encoding"),
+        ("content-language" = String, Header, description = "Content Language"),
+        ("x-mauve-labels" = String, Header, description = "Comma-separated key=value labels describing the object"),
     ),
     request_body = Vec<u8>,
     responses(
@@ -114,6 +123,10 @@ pub async fn post_object(
     params(
         ("collection" = String, description = "Name of the collection"),
         ("name" = String, description = "Name of the object"),
+        ("content-type" = String, Header, description = "Content Type"),
+        ("content-encoding" = String, Header, description = "Content Encoding"),
+        ("content-language" = String, Header, description = "Content Language"),
+        ("x-mauve-labels" = String, Header, description = "Comma-separated key=value labels describing the object"),
     ),
     request_body = Vec<u8>,
     responses(
@@ -178,4 +191,85 @@ pub fn delete_object(
             Err(MauveError::CollectionError(crate::errors::CollectionError::ObjectNotFound).into())
         }
     }
+}
+
+#[derive(Clone, Serialize, Deserialize, ToSchema)]
+pub struct DescribeResponse {
+    pub collection: String,
+    pub name: String,
+    pub meta: Metadata,
+}
+
+impl DescribeResponse {
+    pub fn new(collection: &Collection, name: &str) -> Result<Self, MauveServeError> {
+        let meta = collection.get_object_metadata(name).map_err(|e| e.into())?;
+
+        Ok(Self {
+            name: name.to_string(),
+            collection: collection.name.clone(),
+            meta,
+        })
+    }
+}
+
+#[rocket::async_trait]
+impl<'r> Responder<'r, 'static> for DescribeResponse {
+    fn respond_to(self, _req: &'r Request<'_>) -> rocket::response::Result<'static> {
+        let output = serde_json::to_string(&self);
+        if output.is_err() {
+            Response::build()
+                .status(Status::InternalServerError)
+                .streamed_body(Cursor::new(
+                    output.err().unwrap().to_string().as_bytes().to_vec(),
+                ))
+                .ok()
+        } else {
+            let json = output.unwrap();
+            let labelstr = self.meta.label_str();
+            Response::build()
+                .status(Status::Ok)
+                .header(Header::new("content-type", "application/json"))
+                .header(Header::new("x-mauve-content-type", self.meta.content_type))
+                .header(Header::new(
+                    "x-mauve-content-encoding",
+                    self.meta.content_encoding,
+                ))
+                .header(Header::new(
+                    "x-mauve-content-language",
+                    self.meta.content_language,
+                ))
+                .header(Header::new("x-mauve-labels", labelstr))
+                .header(Header::new(
+                    "x-mauve-offsets-inclusive",
+                    self.meta.offset_map,
+                ))
+                .streamed_body(Cursor::new(json.as_bytes().to_vec()))
+                .ok()
+        }
+    }
+}
+
+#[openapi::path(
+    tag = "objects",
+    context_path = "/v1/objects",
+    params(
+        ("collection" = String, description = "Name of the collection"),
+        ("name" = String, description = "Name of the object"),
+    ),
+    responses(
+        (status = 200, description = "Object described", body = DescribeResponse),
+        (status = 404, description = "Object not found"),
+        (status = 500, description = "Server error"),
+    )
+)]
+/// Describe an object
+#[get("/describe/<collection>/<name>")]
+pub fn describe_object(
+    collection: &str,
+    name: &str,
+    backend: &State<Backend>,
+) -> Result<DescribeResponse, MauveServeError> {
+    let collection = backend.get_collection(collection).map_err(|e| e.into())?;
+    let response = DescribeResponse::new(&collection, name)?;
+    Ok(response)
 }
