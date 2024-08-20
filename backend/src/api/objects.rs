@@ -114,7 +114,7 @@ pub async fn post_object(
         .put_object_metadata(name, meta)
         .map_err(|e| e.into())?;
 
-    Ok(result)
+    Ok(result.to_string())
 }
 
 #[openapi::path(
@@ -160,7 +160,7 @@ pub async fn put_object(
         .put_object_metadata(name, meta)
         .map_err(|e| e.into())?;
 
-    Ok(result)
+    Ok(result.to_string())
 }
 
 #[openapi::path(

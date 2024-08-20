@@ -10,8 +10,11 @@
 //! forward and reverse index of `Label => [ObjectRef, ...]`.
 
 use crate::{
-    backend::Backend, collection::Collection, errors::MauveError, meta::Metadata,
-    objects::ObjectRef,
+    backend::Backend,
+    collection::Collection,
+    errors::MauveError,
+    meta::Metadata,
+    objects::{ObjectRef, ObjectRefs, ToFromMauve},
 };
 use dashmap::DashMap;
 use flume::{Receiver, Sender};
@@ -208,7 +211,7 @@ impl CollectionIndexer {
                     Some(bytes) => bytes,
                     None => return Ok(()), // Skip if no metadata
                 };
-                let meta: Metadata = bincode::deserialize(&bytes.to_vec())?;
+                let meta: Metadata = Metadata::from_object(bytes.to_vec())?;
 
                 for label in meta.labels {
                     self.upsert(self.collection.index_fwd(), label.to_fwd(), or.clone())?;
@@ -222,7 +225,7 @@ impl CollectionIndexer {
                     Some(bytes) => bytes,
                     None => return Ok(()), // Skip if no metadata
                 };
-                let meta: Metadata = bincode::deserialize(&bytes.to_vec())?;
+                let meta: Metadata = Metadata::from_object(bytes.to_vec())?;
                 for label in meta.labels {
                     self.downsert(self.collection.index_fwd(), label.to_fwd(), or.clone())?;
                     self.downsert(self.collection.index_rev(), label.to_rev(), or.clone())?;
@@ -245,14 +248,14 @@ impl CollectionIndexer {
         target.transaction(|target| {
             match target.get(&labelstr)? {
                 Some(old) => {
-                    let mut old: Vec<ObjectRef> =
-                        bincode::deserialize(&old.to_vec()).map_err(|e| {
+                    let mut old: ObjectRefs =
+                        ObjectRefs::from_object(old.to_vec()).map_err(|e| {
                             ConflictableTransactionError::Storage(sled::Error::ReportableBug(
                                 e.to_string(),
                             ))
                         })?;
                     old.push(or.clone());
-                    let old = bincode::serialize(&old).map_err(|e| {
+                    let old = old.to_object().map_err(|e| {
                         ConflictableTransactionError::Storage(sled::Error::ReportableBug(
                             e.to_string(),
                         ))
@@ -260,7 +263,8 @@ impl CollectionIndexer {
                     let _ = target.insert(labelstr.clone().into_bytes(), old)?;
                 }
                 None => {
-                    let new = bincode::serialize(&vec![or.clone()]).map_err(|e| {
+                    let new = ObjectRefs::new(vec![or.clone()]);
+                    let new = new.to_object().map_err(|e| {
                         ConflictableTransactionError::Storage(sled::Error::ReportableBug(
                             e.to_string(),
                         ))
@@ -287,19 +291,18 @@ impl CollectionIndexer {
         target.transaction(|target| {
             match target.get(&labelstr)? {
                 Some(old) => {
-                    let mut old: Vec<ObjectRef> =
-                        bincode::deserialize(&old.to_vec()).map_err(|e| {
-                            ConflictableTransactionError::Storage(sled::Error::ReportableBug(
-                                e.to_string(),
-                            ))
-                        })?;
+                    let mut old = ObjectRefs::from_object(old.to_vec()).map_err(|e| {
+                        ConflictableTransactionError::Storage(sled::Error::ReportableBug(
+                            e.to_string(),
+                        ))
+                    })?;
                     if old.len() == 1 {
                         // short circuit remove unused label
                         let _ = target.remove(labelstr.clone().into_bytes())?;
                         return Ok(());
                     }
                     old.retain(|x| x != &or);
-                    let old = bincode::serialize(&old).map_err(|e| {
+                    let old = old.to_object().map_err(|e| {
                         ConflictableTransactionError::Storage(sled::Error::ReportableBug(
                             e.to_string(),
                         ))

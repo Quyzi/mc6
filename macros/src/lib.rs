@@ -13,7 +13,7 @@ pub fn mauve_object_derive(input: TokenStream) -> TokenStream {
 fn impl_mauve_object(ast: &syn::DeriveInput) -> TokenStream {
     let name = &ast.ident;
     let gen = quote! {
-        impl ToFromMauve<#name> for #name {
+        impl ToFromMauve for #name {
             fn to_object(&self) -> Result<Vec<u8>, MauveError> {
                 let mut writer = vec![];
                 ciborium::into_writer(&self, &mut writer)
@@ -22,6 +22,7 @@ fn impl_mauve_object(ast: &syn::DeriveInput) -> TokenStream {
             }
 
             fn from_object(b: Vec<u8>) -> Result<#name, MauveError> {
+                use std::io::BufReader;
                 let reader = BufReader::new(&*b);
                 let res = ciborium::from_reader(reader)
                     .map_err(|e| MauveError::CborError(e.to_string()))?;

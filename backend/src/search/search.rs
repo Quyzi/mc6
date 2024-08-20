@@ -3,7 +3,12 @@ use std::{collections::HashSet, sync::Arc, time::Duration};
 use dashmap::DashSet;
 
 use super::*;
-use crate::{backend::Backend, collection::Collection, errors::MauveError};
+use crate::{
+    backend::Backend,
+    collection::Collection,
+    errors::MauveError,
+    objects::{ObjectRefs, ToFromMauve},
+};
 
 impl Backend {
     /// Perform a search against the backend
@@ -60,11 +65,12 @@ impl Collection {
     ) -> Result<usize, MauveError> {
         match self.index_fwd().get(label.to_fwd().as_bytes()) {
             Ok(Some(bytes)) => {
-                let objects: Vec<ObjectRef> = bincode::deserialize(&bytes.to_vec())?;
-                for o in &objects {
+                let objects = ObjectRefs::from_object(bytes.to_vec())?;
+                let len = objects.len();
+                for o in objects {
                     target.insert(o.clone());
                 }
-                Ok(objects.len())
+                Ok(len)
             }
             Ok(None) => Ok(0),
             Err(e) => Err(e.into()),

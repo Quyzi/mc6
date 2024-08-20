@@ -1,6 +1,10 @@
+use macros::MauveObject;
 use serde::{Deserialize, Serialize};
 use sled::IVec;
-use std::fmt::Display;
+use std::{
+    fmt::Display,
+    ops::{Deref, DerefMut},
+};
 
 use crate::errors::MauveError;
 
@@ -35,9 +39,41 @@ impl TryFrom<(IVec, IVec)> for ObjectRef {
     }
 }
 
-pub trait ToFromMauve<T: Serialize + for<'de> Deserialize<'de>> {
+#[derive(Clone, Debug, Serialize, Deserialize, MauveObject)]
+pub struct ObjectRefs(Vec<ObjectRef>);
+
+impl ObjectRefs {
+    pub fn new(inner: Vec<ObjectRef>) -> Self {
+        Self(inner)
+    }
+}
+
+impl IntoIterator for ObjectRefs {
+    type Item = ObjectRef;
+
+    type IntoIter = std::vec::IntoIter<Self::Item>;
+
+    fn into_iter(self) -> Self::IntoIter {
+        self.0.into_iter()
+    }
+}
+
+impl DerefMut for ObjectRefs {
+    fn deref_mut(&mut self) -> &mut Self::Target {
+        &mut self.0
+    }
+}
+
+impl Deref for ObjectRefs {
+    type Target = Vec<ObjectRef>;
+    fn deref(&self) -> &Self::Target {
+        &self.0
+    }
+}
+
+pub trait ToFromMauve: Serialize + for<'de> Deserialize<'de> {
     fn to_object(&self) -> Result<Vec<u8>, MauveError>;
-    fn from_object(b: Vec<u8>) -> Result<T, MauveError>;
+    fn from_object(b: Vec<u8>) -> Result<Self, MauveError>;
 }
 
 #[cfg(test)]
@@ -47,7 +83,6 @@ mod tests {
     use macros::MauveObject;
     use rand::{thread_rng, Rng, RngCore};
     use serde::{Deserialize, Serialize};
-    use std::io::BufReader;
 
     #[derive(Debug, Serialize, Deserialize, Clone, PartialEq, Eq, MauveObject)]
     struct TestObject {

@@ -59,12 +59,6 @@ impl From<std::io::Error> for MauveError {
     }
 }
 
-impl From<Box<bincode::ErrorKind>> for MauveError {
-    fn from(value: Box<bincode::ErrorKind>) -> Self {
-        MauveError::BincodeError(value.to_string())
-    }
-}
-
 impl From<ciborium::de::Error<std::io::Error>> for MauveError {
     fn from(value: ciborium::de::Error<std::io::Error>) -> Self {
         Self::CborError(value.to_string())
