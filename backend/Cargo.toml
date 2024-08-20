@@ -8,13 +8,16 @@ name = "mc6_backend"
 path = "src/lib.rs"
 
 [dependencies]
+macros = { path = "../macros" }
 anyhow = { workspace = true }
 bincode = { workspace = true }
 bytes = { workspace = true }
+ciborium = { workspace = true }
 dashmap = { workspace = true }
 figment = { workspace = true }
 flume = { workspace = true }
 log = { workspace = true }
+rand = { workspace = true }
 rocket = { workspace = true }
 serde = { workspace = true }
 serde_json = { workspace = true }
