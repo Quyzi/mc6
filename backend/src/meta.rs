@@ -1,5 +1,8 @@
 use std::{collections::HashSet, io::Cursor};
 
+use crate::objects::ToFromMauve;
+use crate::{errors::MauveError, labels::Label};
+use macros::MauveObject;
 use rocket::{
     http::{Header, Status},
     outcome::Outcome,
@@ -10,9 +13,7 @@ use rocket::{
 use serde::{Deserialize, Serialize};
 use utoipa::ToSchema;
 
-use crate::{errors::MauveError, labels::Label};
-
-#[derive(Serialize, Deserialize, Clone, Debug, Default, ToSchema)]
+#[derive(Serialize, Deserialize, Clone, Debug, Default, ToSchema, MauveObject)]
 pub struct Metadata {
     pub(crate) content_type: String,
     pub(crate) content_encoding: String,

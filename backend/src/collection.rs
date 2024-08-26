@@ -1,9 +1,11 @@
+use serde::{Deserialize, Serialize};
 use std::str::FromStr;
 
 use crate::{
     errors::{CollectionError::ObjectNotFound, MauveError},
     labels::Label,
     meta::Metadata,
+    objects::{ObjectRef, ToFromMauve},
 };
 
 #[derive(Clone)]
@@ -63,7 +65,19 @@ impl Collection {
         Ok(self.data.contains_key(ident)?)
     }
 
-    /// Get an object by its name.
+    /// Get a `T: ToFromMauve` from the collection
+    pub fn get_object_t<T: ToFromMauve>(&self, ident: &str) -> Result<T, MauveError>
+    where
+        T: Serialize + for<'de> Deserialize<'de>,
+    {
+        let bytes = self.get_object(ident)?;
+        Ok(T::from_object(bytes)?)
+    }
+
+    /// Get an object as bytes by its name.
+    ///
+    /// **Note:** `get_object_t` should be used in almost all cases.
+    ///
     pub fn get_object(&self, ident: &str) -> Result<Vec<u8>, MauveError> {
         match self.data.get(ident) {
             Ok(Some(bytes)) => Ok(bytes.to_vec()),
@@ -79,7 +93,7 @@ impl Collection {
     pub fn get_object_metadata(&self, ident: &str) -> Result<Metadata, MauveError> {
         match self.meta.get(ident) {
             Ok(Some(bytes)) => {
-                let meta = bincode::deserialize(&bytes)?;
+                let meta = Metadata::from_object(bytes.to_vec())?;
                 Ok(meta)
             }
             Ok(None) => Err(MauveError::CollectionError(ObjectNotFound)),
@@ -92,6 +106,8 @@ impl Collection {
 
     /// Put an object into the collection with the given identity.
     ///
+    /// **Note:** `put_object_t` should be used in almost all cases.
+    ///
     /// If an object already exists with that identity and the replace flag is true, the old object will
     /// be replaced with the new. The old object will *not* be returned.
     ///
@@ -101,7 +117,7 @@ impl Collection {
         ident: &str,
         object: Vec<u8>,
         replace: bool,
-    ) -> Result<String, MauveError> {
+    ) -> Result<ObjectRef, MauveError> {
         let old = self.data.get(ident)?;
         match old {
             Some(_) => {
@@ -116,12 +132,29 @@ impl Collection {
         }
 
         self.data.insert(ident, object)?;
-        Ok(ident.to_string())
+        Ok(ObjectRef::new(&self.name, ident))
+    }
+
+    /// Put a `T: ToFromMauve` into the collection with the given identity.
+    ///
+    /// If an object already exists with that identity and the replace flag is true, the old object will
+    /// be replaced with the new. The old object will *not* be returned.
+    ///
+    /// If an object already exists with that identity and the replace flag is false, an error is returned.
+    pub fn put_object_t<T: ToFromMauve>(
+        &self,
+        ident: &str,
+        object: &T,
+        replace: bool,
+    ) -> Result<ObjectRef, MauveError> {
+        let bytes = object.to_object()?;
+        self.put_object(ident, bytes, replace)?;
+        Ok(ObjectRef::new(&self.name, ident))
     }
 
     /// Insert metadata about an object, replacing the existing.
     pub fn put_object_metadata(&self, ident: &str, meta: Metadata) -> Result<String, MauveError> {
-        let meta_bytes = bincode::serialize(&meta)?;
+        let meta_bytes = meta.to_object()?;
         match self.meta.insert(ident, meta_bytes) {
             Ok(Some(_old)) => {
                 log::debug!(ident = ident; "Replaced existing object metadata with {meta:?}")
@@ -137,6 +170,17 @@ impl Collection {
 
     /// Delete an object by its name. This returns the object if one existed.
     /// Deleting an object that does not exist is a no-op.
+    pub fn delete_object_t<T: ToFromMauve>(&self, ident: &str) -> Result<Option<T>, MauveError> {
+        match self.delete_object(ident)? {
+            Some(bytes) => Ok(Some(T::from_object(bytes)?)),
+            None => Ok(None),
+        }
+    }
+
+    /// Delete an object by its name. This returns the object if one existed.
+    /// Deleting an object that does not exist is a no-op.
+    ///
+    /// **Note:** `delete_object_t` should be used in almost all cases.
     pub fn delete_object(&self, ident: &str) -> Result<Option<Vec<u8>>, MauveError> {
         let old = self.data.remove(ident)?;
         match old {
@@ -150,7 +194,7 @@ impl Collection {
         let old = self.meta.remove(ident)?;
         match old {
             Some(bytes) => {
-                let val = bincode::deserialize(&bytes)?;
+                let val = Metadata::from_object(bytes.to_vec())?;
                 Ok(Some(val))
             }
             None => Ok(None),

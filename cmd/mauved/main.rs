@@ -1,16 +1,22 @@
-use std::{path::PathBuf, str::FromStr};
-
+use clap::Parser;
 use mc6_backend::{backend, config, errors::MauveError, mauve_rocket};
 use simplelog::{CombinedLogger, TermLogger};
+use std::path::PathBuf;
+
+#[derive(Parser)]
+#[command(version, about, long_about = None)]
+struct CmdArgs {
+    /// Config file to load
+    #[arg(short, long, default_value = "mauve.yaml")]
+    pub config_file: PathBuf,
+}
 
 #[tokio::main]
 pub async fn main() -> Result<(), MauveError> {
+    let args = CmdArgs::parse();
     CombinedLogger::init(vec![TermLogger::new(
         log::LevelFilter::Debug,
-        simplelog::ConfigBuilder::new()
-            .set_time_offset_to_local()
-            .unwrap()
-            .build(),
+        simplelog::ConfigBuilder::new().build(),
         simplelog::TerminalMode::Mixed,
         simplelog::ColorChoice::Auto,
     )])
@@ -18,7 +24,7 @@ pub async fn main() -> Result<(), MauveError> {
 
     log::info!("Mauve starting");
 
-    let config = config::AppConfig::load(PathBuf::from_str("mauve.yaml").unwrap())?;
+    let config = config::AppConfig::load(args.config_file)?;
     let backend = backend::Backend::open(config.clone())?;
 
     mauve_rocket(config, backend).launch().await?;
