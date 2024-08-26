@@ -8,7 +8,8 @@ name = "mauved"
 path = "mauved/main.rs"
 
 [dependencies]
+clap = { workspace = true }
+log = { workspace = true }
+mc6_backend = { path = "../backend" }
 simplelog = { workspace = true }
 tokio = { workspace = true }
-mc6_backend = { path = "../backend" }
-log = { workspace = true }

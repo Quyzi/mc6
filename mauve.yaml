@@ -2,7 +2,7 @@ mauve:
   object_max_size_mb: 30
   
 rocket:
-  address: 127.0.0.1
+  address: 0.0.0.0
   port: 9000
   limits:
     bytes: 1000MiB
