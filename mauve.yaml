@@ -1,6 +1,7 @@
 mauve:
   object_max_size_mb: 30
-  
+  request_concurrency: 8
+    
 rocket:
   address: 0.0.0.0
   port: 9000

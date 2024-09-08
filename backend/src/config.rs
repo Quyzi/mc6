@@ -26,12 +26,16 @@ impl AppConfig {
 #[derive(Serialize, Deserialize, Clone, Debug)]
 pub struct MauveConfig {
     pub object_max_size_mb: u64,
+    pub query_concurrency: u16,
+    pub query_timeout_secs: u64,
 }
 
 impl Default for MauveConfig {
     fn default() -> Self {
         Self {
             object_max_size_mb: 30,
+            query_concurrency: 16,
+            query_timeout_secs: 60,
         }
     }
 }

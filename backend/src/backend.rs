@@ -1,3 +1,5 @@
+use std::sync::Arc;
+
 use flume::{Receiver, Sender};
 use serde::Serialize;
 use utoipa::ToSchema;
@@ -11,6 +13,7 @@ use crate::{
 
 #[derive(Clone)]
 pub struct Backend {
+    config: Arc<AppConfig>,
     db: sled::Db,
     signals: (Sender<IndexerSignal>, Receiver<IndexerSignal>),
 }
@@ -18,11 +21,12 @@ pub struct Backend {
 impl Backend {
     /// Open the backend from a config
     pub fn open(config: AppConfig) -> Result<Self, MauveError> {
-        let config: sled::Config = config.sled.into();
-        let db = config.open()?;
+        let sled_config: sled::Config = config.sled.clone().into();
+        let db = sled_config.open()?;
         let signals = flume::unbounded();
 
         let this = Self {
+            config: Arc::new(config),
             db,
             signals: signals.clone(),
         };
@@ -90,6 +94,11 @@ impl Backend {
     /// Get backend status
     pub fn status(&self) -> Result<BackendState, MauveError> {
         Ok(self.clone().try_into()?)
+    }
+
+    /// Get backend configuration
+    pub fn get_config(&self) -> Arc<AppConfig> {
+        self.config.clone()
     }
 
     /// Get a ref to the backend sled Db

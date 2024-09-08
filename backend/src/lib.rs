@@ -22,6 +22,7 @@ pub mod labels;
 pub mod meta;
 pub mod objects;
 pub mod search;
+pub mod query;
 
 pub fn mauve_rocket(config: AppConfig, backend: Backend) -> Rocket<Build> {
     let rocket = rocket::build()
