@@ -10,7 +10,6 @@ use crate::errors::MauveError;
 
 #[derive(Serialize, Deserialize, Clone, Default, Debug)]
 pub struct AppConfig {
-    pub rocket: rocket::Config,
     pub sled: SledConfig,
     pub mauve: MauveConfig,
 }

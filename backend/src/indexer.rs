@@ -18,7 +18,7 @@ use crate::{
 };
 use dashmap::DashMap;
 use flume::{Receiver, Sender};
-use rocket::futures::{stream::FuturesUnordered, StreamExt};
+use futures::{stream::FuturesUnordered, StreamExt};
 use sled::{transaction::ConflictableTransactionError, Event};
 use std::{fmt::Display, sync::Arc, time::Duration};
 

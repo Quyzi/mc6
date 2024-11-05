@@ -3,21 +3,20 @@ pub mod search;
 use crate::{labels::Label, meta::Metadata, objects::ObjectRef};
 use serde::{Deserialize, Serialize};
 use thiserror::Error;
-use utoipa::ToSchema;
 
-#[derive(Error, Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Error, Clone, Debug, Serialize, Deserialize)]
 pub enum SearchError {
     #[error("Search has not been executed")]
     NotYetExecuted,
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum SearchLabel {
     Include(Label),
     Exclude(Label),
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SearchRequest {
     /// Name of the collection to search
     pub(crate) collection: String,
@@ -55,7 +54,7 @@ impl SearchRequest {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct FoundObject {
     pub object: ObjectRef,
     pub meta: Metadata,
@@ -67,7 +66,7 @@ impl FoundObject {
     }
 }
 
-#[derive(Clone, Debug, Serialize, Deserialize, ToSchema)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub struct SearchResponse {
     /// The search request
     pub req: SearchRequest,

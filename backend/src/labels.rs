@@ -1,12 +1,9 @@
 use serde::{Deserialize, Serialize};
 use std::{fmt::Display, str::FromStr};
-use utoipa::ToSchema;
 
 use crate::errors::MauveError;
 
-#[derive(
-    Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize, ToSchema,
-)]
+#[derive(Clone, Debug, Eq, PartialEq, PartialOrd, Ord, Hash, Default, Serialize, Deserialize)]
 pub struct Label {
     pub name: String,
     pub value: String,

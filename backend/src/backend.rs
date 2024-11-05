@@ -1,6 +1,5 @@
 use flume::{Receiver, Sender};
 use serde::Serialize;
-use utoipa::ToSchema;
 
 use crate::{
     collection::Collection,
@@ -105,7 +104,7 @@ impl Backend {
     }
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize)]
 pub struct TreeState {
     pub checksum: u32,
     pub name: String,
@@ -127,7 +126,7 @@ impl TryInto<TreeState> for sled::Tree {
     }
 }
 
-#[derive(Clone, Debug, Serialize, ToSchema)]
+#[derive(Clone, Debug, Serialize)]
 pub struct BackendState {
     pub checksum: u32,
     pub name: String,

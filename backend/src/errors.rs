@@ -1,12 +1,9 @@
 use std::fmt::{Debug, Display};
 
-use rocket::http::Status;
 use sled::transaction::ConflictableTransactionError;
 use thiserror::Error;
 
 use crate::indexer::IndexerSignal;
-
-pub type MauveServeError = (Status, String);
 
 #[derive(Clone, Debug, Error)]
 pub enum MauveError {
@@ -47,12 +44,6 @@ pub enum MauveError {
     Oops(String),
 }
 
-impl From<rocket::Error> for MauveError {
-    fn from(value: rocket::Error) -> Self {
-        Self::RocketError(value.pretty_print().to_string())
-    }
-}
-
 impl From<std::io::Error> for MauveError {
     fn from(value: std::io::Error) -> Self {
         MauveError::IoError(value.to_string())
@@ -68,31 +59,6 @@ impl From<ciborium::de::Error<std::io::Error>> for MauveError {
 impl From<ciborium::ser::Error<std::io::Error>> for MauveError {
     fn from(value: ciborium::ser::Error<std::io::Error>) -> Self {
         Self::CborError(value.to_string())
-    }
-}
-
-impl Into<MauveServeError> for MauveError {
-    fn into(self) -> MauveServeError {
-        match self {
-            MauveError::ConfigError(err) => (Status::InternalServerError, err.to_string()),
-            MauveError::RocketError(msg) => (Status::InternalServerError, msg),
-            MauveError::SledError(err) => (Status::InternalServerError, err.to_string()),
-            MauveError::SledTxError(err) => (Status::InternalServerError, err.to_string()),
-            MauveError::CollectionError(err) => match err {
-                CollectionError::PutObjectExistsNoReplace => (Status::Conflict, format!("{err}")),
-                CollectionError::ObjectNotFound => (Status::NotFound, format!("{err}")),
-            },
-            MauveError::Oops(msg) => (Status::ImATeapot, msg),
-            MauveError::Utf8Error(err) => (Status::InternalServerError, err.to_string()),
-            MauveError::IoError(msg) => (Status::InternalServerError, msg),
-            MauveError::BincodeError(msg) => (Status::InternalServerError, msg),
-            MauveError::SignalError(err) => (Status::InternalServerError, err.to_string()),
-            MauveError::InvalidLabel(l) => (
-                Status::InternalServerError,
-                format!("Invalid label string {l}"),
-            ),
-            MauveError::CborError(msg) => (Status::InternalServerError, msg),
-        }
     }
 }
 
